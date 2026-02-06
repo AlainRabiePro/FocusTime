@@ -1,50 +1,110 @@
-# Welcome to your Expo app 👋
+# Focus Timer Pro 🍅
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Une application de productivité basée sur la technique Pomodoro avec gestion des tâches et statistiques.
 
-## Get started
+## ✨ Fonctionnalités
 
-1. Install dependencies
+### ⏱️ Minuteur Pomodoro
+- Minuteur de focus personnalisable (25 min par défaut)
+- Pauses courtes et longues
+- Notifications vibratoires à la fin de chaque session
+- Animation de pulse pendant le focus
+- Interface intuitive et élégante
 
-   ```bash
-   npm install
-   ```
+### ✅ Gestion des Tâches
+- Créer et suivre vos tâches
+- Marquer les tâches comme complétées
+- Compteur de pomodoros par tâche
+- Interface simple et efficace
 
-2. Start the app
+### 📊 Statistiques
+- Suivi quotidien, hebdomadaire et total
+- Graphiques des 7 derniers jours
+- Insights personnalisés sur votre productivité
+- Moyenne quotidienne
 
-   ```bash
-   npx expo start
-   ```
+### ⚙️ Paramètres Avancés
+- **Mode sombre/clair/auto** : Choix du thème d'interface
+- **Durées personnalisables** : Ajustez les durées de focus et pauses
+- **Sons et vibrations** : Activez/désactivez les notifications
+- **Export de données** : Sauvegardez vos données
+- **Réinitialisation** : Remise à zéro des paramètres ou données
 
-In the output, you'll find options to open the app in a
+### � Firebase & Cloud Sync
+- **Authentification** : Créez un compte avec email/password
+- **Synchronisation** : Vos données sont sauvegardées dans le cloud
+- **Multi-appareils** : Accédez à vos données depuis plusieurs appareils
+- **Sécurisé** : Chaque utilisateur a ses propres données protégées
+- **Initialisation facile** : Bouton pour créer toutes les collections nécessaires
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### �💰 Monétisation
+- Bannières publicitaires AdMob sur chaque écran
+- Publicités interstitielles tous les 3 sessions complétées
+- Mode développement avec composants mock (voir [PUBLICITES.md](PUBLICITES.md))
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Installation
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Configuration Firebase
 
-## Learn more
+**Important** : Avant de lancer l'app, configurez Firebase :
 
-To learn more about developing your project with Expo, look at the following resources:
+1. Suivez les instructions dans [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
+2. Remplacez les valeurs dans `config/firebase.ts` avec votre configuration Firebase
+3. Configurez les règles de sécurité Firestore
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Lancement
 
-## Join the community
+```bash
+npm start
+```
 
-Join our community of developers creating universal apps.
+Puis scannez le QR code avec Expo Go (Android) ou la caméra (iOS).
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Configuration pour Production
+
+### 1. Remplacer les IDs AdMob de test
+
+Dans les fichiers suivants, remplacez les IDs de test par vos IDs AdMob réels :
+- `app/(tabs)/index.tsx`
+- `app/(tabs)/tasks.tsx`
+- `app/(tabs)/stats.tsx`
+- `app.json`
+
+### 2. Créer un compte AdMob
+
+1. Créez un compte sur [Google AdMob](https://admob.google.com)
+2. Créez une application
+3. Créez des unités publicitaires (Banner et Interstitiel)
+4. Copiez vos IDs d'application et d'unité publicitaire
+
+### 3. Mettre à jour app.json
+
+Modifiez dans `app.json` :
+- `expo.android.package` : votre package unique (ex: com.votreentreprise.focustimer)
+- `expo.ios.bundleIdentifier` : votre bundle ID unique
+- Les IDs AdMob dans les plugins
+
+### 4. Build pour publication
+
+**Android:**
+```bash
+eas build --platform android
+```
+
+**iOS:**
+```bash
+eas build --platform ios
+```
+
+## Technologies
+
+- React Native
+- Expo
+- TypeScript
+- AsyncStorage
+- AdMob (expo-ads-admob)
+
