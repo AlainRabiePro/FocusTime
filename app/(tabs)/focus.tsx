@@ -1,4 +1,4 @@
-import { BannerAd, BannerAdSize, TestIds } from '@/components/mock-ads';
+
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -551,16 +551,6 @@ export default function FocusScreen() {
           </View>
         )}
       </ScrollView>
-
-      <View style={styles.adContainer}>
-        <BannerAd
-          unitId={TestIds.BANNER}
-          size={BannerAdSize.FULL_BANNER}
-          requestOptions={{
-            requestNonPersonalizedAdsOnly: false,
-          }}
-        />
-      </View>
     </View>
   );
 }
@@ -1000,9 +990,5 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     textAlign: 'center',
     lineHeight: 22,
-  },
-  adContainer: {
-    alignItems: 'center',
-    paddingVertical: 10,
   },
 });

@@ -1,4 +1,3 @@
-import { AdEventType, BannerAd, BannerAdSize, InterstitialAd, TestIds } from '@/components/mock-ads';
 import SuccessModal from '@/components/success-modal';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -8,14 +7,9 @@ import { getSettings, saveSession } from '@/utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Linking, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
-// Pour production: import { BannerAd, BannerAdSize, TestIds, InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
+import { Alert, Animated, Dimensions, Linking, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
-
-const interstitial = InterstitialAd.createForAdRequest(TestIds.INTERSTITIAL, {
-  requestNonPersonalizedAdsOnly: false,
-});
 
 export default function TimerScreen() {
   const colorScheme = useColorScheme();
@@ -33,9 +27,96 @@ export default function TimerScreen() {
   const [autoActivateFocus, setAutoActivateFocus] = useState(true);
   const [focusModeActive, setFocusModeActive] = useState(false);
   const [timeManuallyAdjusted, setTimeManuallyAdjusted] = useState(false);
+  const [isLandscape, setIsLandscape] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const completeButtonAnim = useRef(new Animated.Value(0)).current;
+
+  // Détecter l'orientation
+  useEffect(() => {
+    const updateOrientation = () => {
+      const { width, height } = Dimensions.get('window');
+      setIsLandscape(width > height);
+    };
+    
+    updateOrientation();
+    const subscription = Dimensions.addEventListener('change', updateOrientation);
+    
+    return () => subscription?.remove();
+  }, []);
+
+  // Charger l'état du timer au montage
+  useEffect(() => {
+    loadTimerState();
+    loadSettings();
+  }, []);
+
+  // Sauvegarder l'état du timer à chaque changement
+  useEffect(() => {
+    saveTimerState();
+  }, [timeLeft, isRunning, mode, sessionsCompleted]);
+
+  const loadTimerState = async () => {
+    try {
+      const savedState = await AsyncStorage.multiGet([
+        '@timer_time_left',
+        '@timer_is_running',
+        '@timer_mode',
+        '@timer_sessions',
+        '@timer_start_time',
+      ]);
+      
+      const timeLeftSaved = savedState[0][1];
+      const isRunningSaved = savedState[1][1] === 'true';
+      const modeSaved = savedState[2][1] as TimerMode | null;
+      const sessionsSaved = savedState[3][1];
+      const startTimeSaved = savedState[4][1];
+      
+      // Si le timer était en cours, calculer le temps écoulé
+      if (isRunningSaved && timeLeftSaved && startTimeSaved) {
+        const elapsed = Math.floor((Date.now() - parseInt(startTimeSaved)) / 1000);
+        const newTimeLeft = Math.max(0, parseInt(timeLeftSaved) - elapsed);
+        
+        if (newTimeLeft > 0) {
+          setTimeLeft(newTimeLeft);
+          setIsRunning(true);
+          if (modeSaved) setMode(modeSaved);
+          if (sessionsSaved) setSessionsCompleted(parseInt(sessionsSaved));
+        } else {
+          // Le timer s'est terminé pendant qu'on était sur un autre écran
+          await AsyncStorage.removeItem('@timer_start_time');
+        }
+      } else if (timeLeftSaved) {
+        // Timer arrêté, restaurer juste le temps
+        setTimeLeft(parseInt(timeLeftSaved));
+        if (modeSaved) setMode(modeSaved);
+        if (sessionsSaved) setSessionsCompleted(parseInt(sessionsSaved));
+      }
+    } catch (error) {
+      console.error('Error loading timer state:', error);
+    }
+  };
+
+  const saveTimerState = async () => {
+    try {
+      const stateToSave = [
+        ['@timer_time_left', timeLeft.toString()],
+        ['@timer_is_running', isRunning.toString()],
+        ['@timer_mode', mode],
+        ['@timer_sessions', sessionsCompleted.toString()],
+      ];
+      
+      if (isRunning) {
+        stateToSave.push(['@timer_start_time', Date.now().toString()]);
+      } else {
+        await AsyncStorage.removeItem('@timer_start_time');
+      }
+      
+      await AsyncStorage.multiSet(stateToSave);
+    } catch (error) {
+      console.error('Error saving timer state:', error);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -69,16 +150,6 @@ export default function TimerScreen() {
     const appSettings = await getAppSettings();
     setSettings(loadedSettings);
     setVibrationEnabled(appSettings.vibrationEnabled);
-    
-    // Ne réinitialiser le temps que si l'utilisateur ne l'a pas ajusté manuellement
-    if (!timeManuallyAdjusted && !isRunning) {
-      const duration = mode === 'focus' 
-        ? loadedSettings.focusDuration 
-        : mode === 'shortBreak' 
-        ? loadedSettings.shortBreakDuration 
-        : loadedSettings.longBreakDuration;
-      setTimeLeft(duration * 60);
-    }
     
     // Charger les paramètres du mode Focus
     try {
@@ -150,7 +221,6 @@ export default function TimerScreen() {
       type: mode === 'focus' ? 'focus' : 'break',
     });
 
-    // Afficher une pub interstitielle tous les 3 sessions
     if (mode === 'focus') {
       const newSessionsCompleted = sessionsCompleted + 1;
       setSessionsCompleted(newSessionsCompleted);
@@ -162,17 +232,6 @@ export default function TimerScreen() {
         emoji: newSessionsCompleted % 5 === 0 ? '🏆' : '🎉',
       });
       setShowSuccessModal(true);
-
-      if (newSessionsCompleted % 3 === 0) {
-        try {
-          interstitial.load();
-          interstitial.addAdEventListener(AdEventType.LOADED, () => {
-            interstitial.show();
-          });
-        } catch (error) {
-          console.log('Erreur pub interstitielle:', error);
-        }
-      }
 
       // Passer à la pause appropriée
       if (newSessionsCompleted % settings!.sessionsBeforeLongBreak === 0) {
@@ -377,7 +436,7 @@ export default function TimerScreen() {
     <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
       <ScrollView 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
+        contentContainerStyle={[styles.scrollContent, isLandscape && styles.landscapeContent]}>
         {/* Indicateur Mode Focus actif */}
         {focusModeActive && (
           <View style={styles.focusBanner}>
@@ -389,15 +448,248 @@ export default function TimerScreen() {
           </View>
         )}
         
-        {/* Heure actuelle en haut */}
-        <View style={styles.topBar}>
-          <Text style={[styles.currentTime, { color: Colors[colorScheme ?? 'light'].text }]}>
-            {currentTime}
-          </Text>
-        </View>
+        {isLandscape ? (
+          // Layout horizontal (paysage)
+          <View style={styles.landscapeContainer}>
+            {/* Section gauche - Timer */}
+            <View style={styles.landscapeTimerSection}>
+              {/* Heure actuelle */}
+              {!isRunning && (
+                <Text style={[styles.currentTimeLandscape, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  {currentTime}
+                </Text>
+              )}
+              
+              {/* Animation de plante qui pousse */}
+              {isRunning && (
+                <View style={styles.plantContainer}>
+                  <Text style={[styles.plantEmoji, isLandscape && { fontSize: 40 }]}>{getPlantStage()}</Text>
+                </View>
+              )}
+              
+              <View style={styles.timerWithControls}>
+                {/* Bouton flèche haut */}
+                {!isRunning && (
+                  <TouchableOpacity 
+                    style={[styles.arrowButton, styles.arrowButtonCompact, { borderColor: colorScheme === 'dark' ? '#3A3A3A' : '#e0e0e0' }]}
+                    onPress={() => adjustTime(1)}
+                    activeOpacity={0.6}>
+                    <Text style={[styles.arrowButtonText, { fontSize: 20 }, { color: getModeColor() }]}>▲</Text>
+                  </TouchableOpacity>
+                )}
+                
+                <Animated.View 
+                  style={[styles.modernTimer, { transform: [{ scale: pulseAnim }] }]}
+                  {...(!isRunning && PanResponder.create({
+                    onStartShouldSetPanResponder: () => true,
+                    onMoveShouldSetPanResponder: () => true,
+                    onPanResponderRelease: (evt, gestureState) => {
+                      if (Math.abs(gestureState.dx) > 50) {
+                        const order = ['minuteTens', 'minuteUnits', 'secondTens', 'secondUnits'] as const;
+                        const currentIndex = order.indexOf(selectedDigit);
+                        
+                        if (gestureState.dx > 0) {
+                          const nextIndex = (currentIndex + 1) % order.length;
+                          setSelectedDigit(order[nextIndex]);
+                        } else {
+                          const prevIndex = (currentIndex - 1 + order.length) % order.length;
+                          setSelectedDigit(order[prevIndex]);
+                        }
+                      }
+                    }
+                  }).panHandlers)}>
+                  <Text style={[styles.modeLabel, styles.modeLabelCompact, { color: getModeColor() }]}>
+                    {getModeTitle().toUpperCase()}
+                  </Text>
+                  
+                  {!isRunning && (
+                    <Text style={[styles.digitIndicator, styles.digitIndicatorCompact, { color: Colors[colorScheme ?? 'light'].text }]}>
+                      {selectedDigit === 'minuteTens' && 'Dizaine Minutes'}
+                      {selectedDigit === 'minuteUnits' && 'Unité Minutes'}
+                      {selectedDigit === 'secondTens' && 'Dizaine Secondes'}
+                      {selectedDigit === 'secondUnits' && 'Unité Secondes'}
+                    </Text>
+                  )}
+                  
+                  <View style={styles.timerWithSideArrows}>
+                    {!isRunning && (
+                      <TouchableOpacity 
+                        style={styles.sideArrowButton}
+                        onPress={() => {
+                          const order = ['minuteTens', 'minuteUnits', 'secondTens', 'secondUnits'] as const;
+                          const currentIndex = order.indexOf(selectedDigit);
+                          const prevIndex = (currentIndex - 1 + order.length) % order.length;
+                          setSelectedDigit(order[prevIndex]);
+                        }}
+                        activeOpacity={0.6}>
+                        <Text style={[styles.sideArrowText, styles.sideArrowTextCompact, { color: getModeColor() }]}>◀</Text>
+                      </TouchableOpacity>
+                    )}
+                    
+                    <View style={styles.timerDisplay}>
+                      <Text style={[
+                        styles.minutesText,
+                        isLandscape && styles.timerTextCompact,
+                        isRunning 
+                          ? { color: Colors[colorScheme ?? 'light'].text, opacity: 1 }
+                          : selectedDigit === 'minuteTens' 
+                            ? { color: Colors[colorScheme ?? 'light'].text, opacity: 1 }
+                            : { color: '#999', opacity: 0.5 }
+                      ]}>
+                        {Math.floor(timeLeft / 600).toString()}
+                      </Text>
+                      <Text style={[
+                        styles.minutesText,
+                        isLandscape && styles.timerTextCompact,
+                        isRunning 
+                          ? { color: Colors[colorScheme ?? 'light'].text, opacity: 1 }
+                          : selectedDigit === 'minuteUnits' 
+                            ? { color: Colors[colorScheme ?? 'light'].text, opacity: 1 }
+                            : { color: '#999', opacity: 0.5 }
+                      ]}>
+                      {Math.floor((timeLeft % 600) / 60).toString()}
+                    </Text>
+                    <Text style={[styles.colonText, isLandscape && styles.colonTextCompact, { color: Colors[colorScheme ?? 'light'].text }]}>
+                      :
+                    </Text>
+                    <Text style={[
+                      styles.secondsText,
+                      isLandscape && styles.timerTextCompact,
+                      isRunning 
+                        ? { color: Colors[colorScheme ?? 'light'].text, opacity: 1 }
+                        : selectedDigit === 'secondTens' 
+                          ? { color: Colors[colorScheme ?? 'light'].text, opacity: 1 }
+                          : { color: '#999', opacity: 0.5 }
+                    ]}>
+                      {Math.floor((timeLeft % 60) / 10).toString()}
+                    </Text>
+                    <Text style={[
+                      styles.secondsText,
+                      isLandscape && styles.timerTextCompact,
+                      isRunning 
+                        ? { color: Colors[colorScheme ?? 'light'].text, opacity: 1 }
+                        : selectedDigit === 'secondUnits' 
+                          ? { color: Colors[colorScheme ?? 'light'].text, opacity: 1 }
+                          : { color: '#999', opacity: 0.5 }
+                    ]}>
+                      {(timeLeft % 10).toString()}
+                    </Text>
+                  </View>
+                  
+                  {!isRunning && (
+                    <TouchableOpacity 
+                      style={styles.sideArrowButton}
+                      onPress={() => {
+                        const order = ['minuteTens', 'minuteUnits', 'secondTens', 'secondUnits'] as const;
+                        const currentIndex = order.indexOf(selectedDigit);
+                        const nextIndex = (currentIndex + 1) % order.length;
+                        setSelectedDigit(order[nextIndex]);
+                      }}
+                      activeOpacity={0.6}>
+                      <Text style={[styles.sideArrowText, styles.sideArrowTextCompact, { color: getModeColor() }]}>▶</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                
+                <View style={[styles.progressBar, styles.progressBarCompact, { backgroundColor: getModeColor() + '15' }]}>
+                    <View 
+                      style={[
+                        styles.progressBarFill,
+                        { backgroundColor: getModeColor(), width: `${getProgress()}%` }
+                      ]} 
+                    />
+                  </View>
+                </Animated.View>
+                
+                {!isRunning && (
+                  <TouchableOpacity 
+                    style={[styles.arrowButton, styles.arrowButtonCompact, { borderColor: colorScheme === 'dark' ? '#3A3A3A' : '#e0e0e0' }]}
+                    onPress={() => adjustTime(-1)}
+                    activeOpacity={0.6}>
+                    <Text style={[styles.arrowButtonText, { fontSize: 20 }, { color: getModeColor() }]}>▼</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              
+              <Text style={[styles.sessionsStat, styles.sessionsStatCompact, { color: Colors[colorScheme ?? 'light'].text }]}>
+                {sessionsCompleted} session{sessionsCompleted > 1 ? 's' : ''}
+              </Text>
+            </View>
+            
+            {/* Section droite - Contrôles */}
+            <View style={styles.landscapeControlsSection}>
+              {/* Boutons de mode */}
+              {!isRunning && (
+                <View style={styles.modeButtonsContainer}>
+                  <View style={[styles.modeButtons, styles.modeButtonsLandscape, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#f5f5f5' }]}>
+                    <TouchableOpacity
+                      style={[styles.modeButton, styles.modeButtonCompact, mode === 'focus' && [styles.activeModeButton, { backgroundColor: getModeColor() }]]}
+                      onPress={() => switchMode('focus')}
+                      activeOpacity={0.8}>
+                      <Text style={[styles.modeButtonText, styles.modeButtonTextCompact, mode === 'focus' && styles.activeModeButtonText]}>
+                        Focus
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modeButton, styles.modeButtonCompact, mode === 'shortBreak' && [styles.activeModeButton, { backgroundColor: getModeColor() }]]}
+                      onPress={() => switchMode('shortBreak')}
+                      activeOpacity={0.8}>
+                      <Text style={[styles.modeButtonText, styles.modeButtonTextCompact, mode === 'shortBreak' && styles.activeModeButtonText]}>
+                        Pause
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modeButton, styles.modeButtonCompact, mode === 'longBreak' && [styles.activeModeButton, { backgroundColor: getModeColor() }]]}
+                      onPress={() => switchMode('longBreak')}
+                      activeOpacity={0.8}>
+                      <Text style={[styles.modeButtonText, styles.modeButtonTextCompact, mode === 'longBreak' && styles.activeModeButtonText]}>
+                        Longue
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              
+              {/* Bouton principal */}
+              <View style={styles.controls}>
+                <TouchableOpacity
+                  style={[styles.mainControlButton, styles.mainControlButtonCompact, { backgroundColor: getModeColor() }]}
+                  onPress={toggleTimer}
+                  activeOpacity={0.8}>
+                  <Text style={[styles.mainControlButtonText, styles.mainControlButtonTextCompact]}>
+                    {isRunning ? 'PAUSE' : 'START'}
+                  </Text>
+                </TouchableOpacity>
 
-        {/* Timer moderne au centre */}
-        <View style={styles.modernTimerContainer}>
+                {showCompleteButton && isRunning && (
+                  <Animated.View 
+                    style={[
+                      styles.completeButtonContainer,
+                      { opacity: completeButtonAnim, transform: [{ scale: completeButtonAnim }] }
+                    ]}>
+                    <TouchableOpacity
+                      style={styles.completeButton}
+                      onPress={handleCompleteNow}
+                      activeOpacity={0.8}>
+                      <Text style={styles.completeButtonText}>Terminer maintenant</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
+              </View>
+            </View>
+          </View>
+        ) : (
+          // Layout vertical (portrait) - ancien code
+          <>
+            {/* Heure actuelle en haut */}
+            <View style={styles.topBar}>
+              <Text style={[styles.currentTime, { color: Colors[colorScheme ?? 'light'].text }]}>
+                {currentTime}
+              </Text>
+            </View>
+
+            {/* Timer moderne au centre */}
+            <View style={styles.modernTimerContainer}>
           {/* Animation de plante qui pousse */}
           {isRunning && (
             <View style={styles.plantContainer}>
@@ -629,7 +921,7 @@ export default function TimerScreen() {
         )}
 
       {/* Section Playlists de Concentration */}
-      {mode === 'focus' && focusModeEnabled && (
+      {!isLandscape && mode === 'focus' && focusModeEnabled && (
         <View style={[styles.playlistSection, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' }]}>
           <View style={styles.playlistHeader}>
             <Text style={styles.playlistIcon}>🎵</Text>
@@ -668,16 +960,8 @@ export default function TimerScreen() {
           </View>
         </View>
       )}
-
-        <View style={styles.adContainer}>
-          <BannerAd
-            unitId={TestIds.BANNER}
-            size={BannerAdSize.FULL_BANNER}
-            requestOptions={{
-              requestNonPersonalizedAdsOnly: false,
-            }}
-          />
-        </View>
+          </>
+        )}
       </ScrollView>
       
       <SuccessModal
@@ -1053,8 +1337,85 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
-  adContainer: {
+  // Styles pour le mode paysage
+  landscapeContent: {
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
+  landscapeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 'auto',
+    gap: 40,
+    paddingHorizontal: 20,
+  },
+  landscapeTimerSection: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  landscapeControlsSection: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  currentTimeLandscape: {
+    fontSize: 18,
+    fontWeight: '300',
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    opacity: 0.6,
+  },
+  arrowButtonCompact: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginVertical: 8,
+  },
+  modeLabelCompact: {
+    fontSize: 10,
+    marginBottom: 8,
+  },
+  digitIndicatorCompact: {
+    fontSize: 9,
+    marginBottom: 6,
+  },
+  sideArrowTextCompact: {
+    fontSize: 24,
+  },
+  timerTextCompact: {
+    fontSize: 48,
+    lineHeight: 48,
+  },
+  colonTextCompact: {
+    fontSize: 48,
+    lineHeight: 48,
+  },
+  progressBarCompact: {
+    width: 150,
+    height: 3,
+  },
+  sessionsStatCompact: {
+    fontSize: 11,
+    marginTop: 12,
+  },
+  modeButtonsLandscape: {
+    flexDirection: 'column',
+    gap: 8,
+  },
+  modeButtonCompact: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  modeButtonTextCompact: {
+    fontSize: 12,
+  },
+  mainControlButtonCompact: {
+    paddingVertical: 16,
+    paddingHorizontal: 60,
+    borderRadius: 30,
+  },
+  mainControlButtonTextCompact: {
+    fontSize: 16,
   },
 });

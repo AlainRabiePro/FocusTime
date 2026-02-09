@@ -1,11 +1,10 @@
-import { BannerAd, BannerAdSize, TestIds } from '@/components/mock-ads';
+
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Task } from '@/types/storage';
 import { addTask, deleteTask, getTasks, updateTask } from '@/utils/storage';
 import React, { useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-// Pour production: import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 type Priority = 'low' | 'medium' | 'high';
 
@@ -410,16 +409,6 @@ export default function TasksScreen() {
           </View>
         )}
       </ScrollView>
-
-      <View style={styles.adContainer}>
-        <BannerAd
-          unitId={TestIds.BANNER}
-          size={BannerAdSize.FULL_BANNER}
-          requestOptions={{
-            requestNonPersonalizedAdsOnly: false,
-          }}
-        />
-      </View>
     </View>
   );
 }
@@ -708,9 +697,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.6,
     lineHeight: 24,
-  },
-  adContainer: {
-    alignItems: 'center',
-    paddingVertical: 10,
   },
 });

@@ -1,4 +1,4 @@
-import { BannerAd, BannerAdSize, TestIds } from '@/components/mock-ads';
+
 import { auth } from '@/config/firebase';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -65,9 +65,16 @@ export default function SettingsScreen() {
   const handleThemeChange = async (theme: ThemeMode) => {
     setThemeMode(theme);
     await saveTheme(theme);
-    if (theme !== 'auto') {
+    // Forcer l'application du thème immédiatement
+    if (theme === 'auto') {
+      Appearance.setColorScheme(null); // Revenir au thème système
+    } else {
       Appearance.setColorScheme(theme);
     }
+    // Déclencher un rechargement de l'app pour appliquer le thème partout
+    setTimeout(() => {
+      // Les composants utilisant useColorScheme vont se mettre à jour automatiquement
+    }, 100);
   };
 
   const handleSoundToggle = async (enabled: boolean) => {
@@ -409,16 +416,6 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
-
-      <View style={styles.adContainer}>
-        <BannerAd
-          unitId={TestIds.BANNER}
-          size={BannerAdSize.FULL_BANNER}
-          requestOptions={{
-            requestNonPersonalizedAdsOnly: false,
-          }}
-        />
-      </View>
     </View>
   );
 }
@@ -574,9 +571,5 @@ const styles = StyleSheet.create({
   accountEmail: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  adContainer: {
-    alignItems: 'center',
-    paddingVertical: 10,
   },
 });
