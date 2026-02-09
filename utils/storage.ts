@@ -52,19 +52,21 @@ export const saveTasks = async (tasks: Task[]): Promise<void> => {
   }
 };
 
-export const addTask = async (title: string): Promise<Task> => {
+export const addTask = async (title: string, priority: 'low' | 'medium' | 'high' = 'medium', additionalData?: Partial<Task>): Promise<Task> => {
   const newTask: Task = {
     id: Date.now().toString(),
     title,
     completed: false,
     pomodorosCompleted: 0,
     createdAt: Date.now(),
+    priority,
+    ...additionalData,
   };
 
   try {
     // Si authentifié, ajouter à Firebase
     if (isAuthenticated()) {
-      const firebaseTask = await addFirebaseTask(title);
+      const firebaseTask = await addFirebaseTask(title, priority, additionalData);
       // Sauvegarder aussi en local
       const tasks = await getTasks();
       await AsyncStorage.setItem(TASKS_KEY, JSON.stringify([firebaseTask, ...tasks]));

@@ -121,8 +121,8 @@ export default function StatsScreen() {
             <Circle
               stroke={colorScheme === 'dark' ? '#3a3a3a' : '#f0f0f0'}
               fill="transparent"
-              strokeWidth={18}
-              r={center - 25}
+              strokeWidth={16}
+              r={center - 30}
               cx={center}
               cy={center}
             />
@@ -130,8 +130,8 @@ export default function StatsScreen() {
             <Circle
               stroke={colorScheme === 'dark' ? '#3a3a3a' : '#f0f0f0'}
               fill="transparent"
-              strokeWidth={18}
-              r={center - 55}
+              strokeWidth={16}
+              r={center - 58}
               cx={center}
               cy={center}
             />
@@ -139,8 +139,8 @@ export default function StatsScreen() {
             <Circle
               stroke={colorScheme === 'dark' ? '#3a3a3a' : '#f0f0f0'}
               fill="transparent"
-              strokeWidth={18}
-              r={center - 85}
+              strokeWidth={16}
+              r={center - 86}
               cx={center}
               cy={center}
             />
@@ -150,21 +150,21 @@ export default function StatsScreen() {
               percentage={totalPercentage}
               color="#45B7D1"
               radius={center}
-              strokeWidth={18}
+              strokeWidth={16}
             />
             {/* Progrès moyen - Semaine */}
             <CircularProgress
               percentage={weekPercentage}
               color="#4ECDC4"
               radius={center}
-              strokeWidth={18}
+              strokeWidth={16}
             />
             {/* Progrès intérieur - Aujourd'hui */}
             <CircularProgress
               percentage={todayPercentage}
               color="#FF6B6B"
               radius={center}
-              strokeWidth={18}
+              strokeWidth={16}
             />
           </Svg>
           
@@ -351,15 +351,23 @@ export default function StatsScreen() {
     }
   };
 
+  const cardBackground = colorScheme === 'dark' ? '#1F1F1F' : '#FFFFFF';
+  const surfaceBackground = colorScheme === 'dark' ? '#151515' : '#F6F7FB';
+  const mutedText = colorScheme === 'dark' ? '#B9BCC5' : '#5F6470';
+  const primary = '#4ECDC4';
+  const accent = '#45B7D1';
+
   return (
-    <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+    <View style={[styles.container, { backgroundColor: surfaceBackground }]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>
-          Statistiques
-        </Text>
-        <Text style={[styles.subtitle, { color: Colors[colorScheme ?? 'light'].text }]}>
-          Suivez votre productivité
-        </Text>
+        <View style={styles.headerText}>
+          <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>Statistiques</Text>
+          <Text style={[styles.subtitle, { color: mutedText }]}>Votre progression en un coup d'œil</Text>
+        </View>
+        <View style={[styles.headerBadge, { backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#EDF7F6' }]}
+        >
+          <Text style={[styles.headerBadgeText, { color: primary }]}>Focus</Text>
+        </View>
       </View>
 
       <View style={styles.filterContainer}>
@@ -418,9 +426,30 @@ export default function StatsScreen() {
       </View>
 
       <ScrollView style={styles.content}>
+        <View style={styles.quickStatsRow}>
+          <View style={[styles.quickCard, { backgroundColor: cardBackground }]}
+          >
+            <Text style={[styles.quickLabel, { color: mutedText }]}>Aujourd'hui</Text>
+            <Text style={[styles.quickValue, { color: Colors[colorScheme ?? 'light'].text }]}>{stats.todayMinutes} min</Text>
+            <Text style={[styles.quickSubValue, { color: mutedText }]}>{stats.todaySessions} sessions</Text>
+          </View>
+          <View style={[styles.quickCard, { backgroundColor: cardBackground }]}
+          >
+            <Text style={[styles.quickLabel, { color: mutedText }]}>{getPeriodLabel()}</Text>
+            <Text style={[styles.quickValue, { color: Colors[colorScheme ?? 'light'].text }]}>{stats.weekMinutes} min</Text>
+            <Text style={[styles.quickSubValue, { color: mutedText }]}>{stats.weekSessions} sessions</Text>
+          </View>
+          <View style={[styles.quickCard, { backgroundColor: cardBackground }]}
+          >
+            <Text style={[styles.quickLabel, { color: mutedText }]}>Total</Text>
+            <Text style={[styles.quickValue, { color: Colors[colorScheme ?? 'light'].text }]}>{stats.totalMinutes} min</Text>
+            <Text style={[styles.quickSubValue, { color: mutedText }]}>{stats.totalSessions} sessions</Text>
+          </View>
+        </View>
+
         <CircularStats />
 
-        <View style={[styles.chartContainer, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' }]}>
+        <View style={[styles.chartContainer, { backgroundColor: cardBackground }]}>
           <View style={styles.chartHeader}>
             <Text style={[styles.chartTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
               📈 {getPeriodLabel()}
@@ -453,7 +482,7 @@ export default function StatsScreen() {
           <View style={styles.chart}>
             {dailyData.map((day, index) => {
               const heightPercentage = (day.minutes / maxMinutes) * 100;
-              const barColor = day.minutes > 0 ? (heightPercentage > 70 ? '#4ECDC4' : heightPercentage > 40 ? '#45B7D1' : '#A8E6CF') : '#E0E0E0';
+              const barColor = day.minutes > 0 ? (heightPercentage > 70 ? primary : heightPercentage > 40 ? accent : '#A8E6CF') : (colorScheme === 'dark' ? '#2C2C2C' : '#E8E9EE');
               return (
                 <View key={index} style={styles.barContainer}>
                   <Text style={[styles.barValue, { color: Colors[colorScheme ?? 'light'].text }]}>
@@ -479,27 +508,27 @@ export default function StatsScreen() {
           </View>
         </View>
 
-        <View style={styles.insights}>
+        <View style={[styles.insights, { backgroundColor: cardBackground }]}>
           <Text style={[styles.insightsTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
             💡 Insights
           </Text>
           {stats.todaySessions === 0 && (
-            <Text style={[styles.insightText, { color: Colors[colorScheme ?? 'light'].text }]}>
+            <Text style={[styles.insightText, { color: mutedText }]}>
               Commencez votre première session aujourd'hui !
             </Text>
           )}
           {stats.todaySessions > 0 && stats.todaySessions < 4 && (
-            <Text style={[styles.insightText, { color: Colors[colorScheme ?? 'light'].text }]}>
+            <Text style={[styles.insightText, { color: mutedText }]}>
               Bon début ! Essayez de compléter 4+ sessions aujourd'hui.
             </Text>
           )}
           {stats.todaySessions >= 4 && (
-            <Text style={[styles.insightText, { color: Colors[colorScheme ?? 'light'].text }]}>
+            <Text style={[styles.insightText, { color: mutedText }]}>
               🔥 Incroyable ! Vous êtes en feu aujourd'hui !
             </Text>
           )}
           {stats.weekSessions >= 20 && (
-            <Text style={[styles.insightText, { color: Colors[colorScheme ?? 'light'].text }]}>
+            <Text style={[styles.insightText, { color: mutedText }]}>
               🏆 Semaine exceptionnelle ! Continuez comme ça !
             </Text>
           )}
@@ -512,47 +541,63 @@ export default function StatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
+    paddingTop: 56,
   },
   header: {
-    padding: 20,
-    paddingBottom: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  headerText: {
+    flex: 1,
   },
   title: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '800',
-    marginBottom: 5,
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
   subtitle: {
-    fontSize: 15,
-    opacity: 0.6,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  headerBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  headerBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   filterContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    gap: 8,
-    marginBottom: 20,
+    gap: 10,
+    marginTop: 16,
+    marginBottom: 18,
   },
   filterButton: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
     alignItems: 'center',
     backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   filterButtonActive: {
     backgroundColor: '#4ECDC4',
     borderColor: '#4ECDC4',
     shadowColor: '#4ECDC4',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   filterButtonText: {
     fontSize: 12,
@@ -562,14 +607,44 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
-  circularContainer: {
-    marginBottom: 25,
-    padding: 25,
-    borderRadius: 20,
+  quickStatsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  quickCard: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 18,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  quickLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  quickValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  quickSubValue: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  circularContainer: {
+    marginBottom: 22,
+    padding: 22,
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowRadius: 14,
     elevation: 4,
   },
   circularWrapper: {
@@ -583,20 +658,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   centerValue: {
-    fontSize: 52,
+    fontSize: 42,
     fontWeight: '800',
     letterSpacing: -1,
   },
   centerLabel: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
-    marginTop: 4,
+    marginTop: 2,
     opacity: 0.8,
   },
   centerSubLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
-    marginTop: 2,
+    marginTop: 1,
     opacity: 0.5,
   },
   legendContainer: {
@@ -626,13 +701,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   chartContainer: {
-    marginBottom: 25,
-    padding: 20,
-    borderRadius: 20,
+    marginBottom: 22,
+    padding: 18,
+    borderRadius: 22,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowRadius: 14,
     elevation: 4,
   },
   chartHeader: {
@@ -720,10 +795,9 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   insights: {
-    marginBottom: 20,
+    marginBottom: 24,
     padding: 18,
-    borderRadius: 20,
-    backgroundColor: '#F8F9FA',
+    borderRadius: 22,
   },
   insightsTitle: {
     fontSize: 17,

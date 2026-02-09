@@ -255,12 +255,12 @@ export default function SettingsScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+    <View style={[styles.container, { backgroundColor: colorScheme === 'dark' ? '#0D0D0D' : '#F8F9FA' }]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>
           Settings
         </Text>
-        <Text style={[styles.subtitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+        <Text style={[styles.subtitle, { color: colorScheme === 'dark' ? '#B9BCC5' : '#5F6470' }]}>
           Customize your experience
         </Text>
       </View>
@@ -273,7 +273,10 @@ export default function SettingsScreen() {
                 key={mode}
                 style={[
                   styles.themeButton,
-                  { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' },
+                  { 
+                    backgroundColor: colorScheme === 'dark' ? '#1F1F1F' : '#fff',
+                    borderColor: colorScheme === 'dark' ? '#2A2A2A' : '#E0E0E0',
+                  },
                   themeMode === mode && styles.themeButtonActive,
                 ]}
                 onPress={() => handleThemeChange(mode)}>

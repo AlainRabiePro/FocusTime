@@ -4,6 +4,11 @@ export interface Task {
   completed: boolean;
   pomodorosCompleted: number;
   createdAt: number;
+  startDate?: number;
+  endDate?: number;
+  estimatedDuration?: number; // en minutes
+  priority: 'low' | 'medium' | 'high';
+  description?: string;
 }
 
 export interface Session {

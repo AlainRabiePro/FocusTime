@@ -67,7 +67,7 @@ export const getFirebaseTasks = async (): Promise<Task[]> => {
   }
 };
 
-export const addFirebaseTask = async (title: string): Promise<Task> => {
+export const addFirebaseTask = async (title: string, priority: 'low' | 'medium' | 'high' = 'medium', additionalData?: Partial<Task>): Promise<Task> => {
   try {
     const userId = getCurrentUserId();
     const tasksRef = collection(db, 'users', userId, 'tasks');
@@ -77,6 +77,8 @@ export const addFirebaseTask = async (title: string): Promise<Task> => {
       completed: false,
       pomodorosCompleted: 0,
       createdAt: Date.now(),
+      priority,
+      ...additionalData,
     };
 
     const docRef = await addDoc(tasksRef, newTask);
@@ -84,7 +86,7 @@ export const addFirebaseTask = async (title: string): Promise<Task> => {
     return {
       id: docRef.id,
       ...newTask,
-    };
+    } as Task;
   } catch (error) {
     console.error('Error adding task:', error);
     throw error;
