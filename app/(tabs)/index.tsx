@@ -434,11 +434,51 @@ export default function TimerScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, isLandscape && styles.landscapeContent]}>
-        {/* Indicateur Mode Focus actif */}
-        {focusModeActive && (
+      {/* Mode immersif quand le timer est actif */}
+      {isRunning ? (
+        <View style={[styles.immersiveContainer, { backgroundColor: 'rgba(0, 0, 0, 0.95)' }]}>
+          <View style={styles.immersiveTimerWrapper}>
+            <View style={styles.immersiveTimeDisplay}>
+              <View style={styles.immersiveTimeBox}>
+                <Text style={[styles.immersiveCurrentTime, { color: '#fff' }]}>
+                  {currentTime.split(':')[0]}
+                </Text>
+              </View>
+              <Text style={[styles.immersiveTimeSeparator, { color: '#fff' }]}>:</Text>
+              <View style={styles.immersiveTimeBox}>
+                <Text style={[styles.immersiveCurrentTime, { color: '#fff' }]}>
+                  {currentTime.split(':')[1]}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.immersiveTimerDisplay}>
+              <View style={styles.immersiveTimerBox}>
+                <Text style={[styles.immersiveTime, { color: '#fff' }]}>
+                  {formatTime(timeLeft).split(':')[0]}
+                </Text>
+              </View>
+              <Text style={[styles.immersiveTimerSeparator, { color: '#fff' }]}>:</Text>
+              <View style={styles.immersiveTimerBox}>
+                <Text style={[styles.immersiveTime, { color: '#fff' }]}>
+                  {formatTime(timeLeft).split(':')[1]}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.immersivePauseButton}
+              onPress={toggleTimer}
+              activeOpacity={0.8}>
+              <Text style={styles.immersivePauseButtonText}>⏸</Text>
+              <Text style={styles.immersivePauseButtonLabel}>PAUSE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scrollContent, isLandscape && styles.landscapeContent]}>
+          {/* Indicateur Mode Focus actif */}
+          {focusModeActive && (
           <View style={styles.focusBanner}>
             <Text style={styles.focusBannerIcon}>🎯</Text>
             <View style={styles.focusBannerContent}>
@@ -962,7 +1002,8 @@ export default function TimerScreen() {
       )}
           </>
         )}
-      </ScrollView>
+        </ScrollView>
+      )}
       
       <SuccessModal
         visible={showSuccessModal}
@@ -1417,5 +1458,93 @@ const styles = StyleSheet.create({
   },
   mainControlButtonTextCompact: {
     fontSize: 16,
+  },
+  // Mode immersif (écran assombri avec timer)
+  immersiveContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  immersiveTimerWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  immersiveTimeDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 60,
+  },
+  immersiveTimeBox: {
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  immersiveTimeSeparator: {
+    fontSize: 40,
+    fontWeight: '100',
+    marginHorizontal: 8,
+    opacity: 0.5,
+  },
+  immersiveCurrentTime: {
+    fontSize: 40,
+    fontWeight: '100',
+    letterSpacing: 2,
+    fontVariant: ['tabular-nums'],
+  },
+  immersiveTimerDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  immersiveTimerBox: {
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  immersiveTimerSeparator: {
+    fontSize: 72,
+    fontWeight: '100',
+    marginHorizontal: 12,
+    opacity: 0.4,
+  },
+  immersiveTime: {
+    fontSize: 72,
+    fontWeight: '200',
+    letterSpacing: 2,
+    fontVariant: ['tabular-nums'],
+  },
+  immersivePauseButton: {
+    marginTop: 60,
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  immersivePauseButtonText: {
+    fontSize: 32,
+    marginBottom: 4,
+  },
+  immersivePauseButtonLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 2,
+    opacity: 0.9,
   },
 });

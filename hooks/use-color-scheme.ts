@@ -1,6 +1,6 @@
+import { getAppSettings, ThemeMode } from '@/utils/app-settings';
 import { useEffect, useState } from 'react';
 import { ColorSchemeName, useColorScheme as useRNColorScheme } from 'react-native';
-import { getAppSettings, ThemeMode } from '@/utils/app-settings';
 
 export function useColorScheme(): ColorSchemeName {
   const systemColorScheme = useRNColorScheme();

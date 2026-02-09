@@ -1,15 +1,13 @@
-
 import { auth } from '@/config/firebase';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { signOut } from '@/services/auth';
-import { initializeFirebaseCollections } from '@/services/firestore';
 import { Settings } from '@/types/storage';
 import { getAppSettings, saveSoundEnabled, saveTheme, saveVibrationEnabled, ThemeMode } from '@/utils/app-settings';
 import { DEFAULT_SETTINGS, getSessions, getSettings, getTasks, saveSettings } from '@/utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
-import { Alert, Appearance, ScrollView, Share, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Appearance, Linking, ScrollView, Share, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
@@ -18,11 +16,12 @@ export default function SettingsScreen() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [isInitializing, setIsInitializing] = useState(false);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [totalTasks, setTotalTasks] = useState(0);
 
   useEffect(() => {
     loadAllSettings();
-    // Écouter les changements d'authentification
+    loadStats();
     const user = auth.currentUser;
     if (user) {
       setUserEmail(user.email);
@@ -36,6 +35,13 @@ export default function SettingsScreen() {
     setThemeMode(appSettings.theme);
     setSoundEnabled(appSettings.soundEnabled);
     setVibrationEnabled(appSettings.vibrationEnabled);
+  };
+
+  const loadStats = async () => {
+    const sessions = await getSessions();
+    const tasks = await getTasks();
+    setTotalSessions(sessions.length);
+    setTotalTasks(tasks.length);
   };
 
   const updateFocusDuration = async (duration: number) => {
@@ -89,7 +95,7 @@ export default function SettingsScreen() {
 
   const handleResetSettings = () => {
     Alert.alert(
-      'Réinitialiser les paramètres',
+      '🔄 Réinitialiser les paramètres',
       'Êtes-vous sûr de vouloir réinitialiser tous les paramètres par défaut ?',
       [
         { text: 'Annuler', style: 'cancel' },
@@ -102,7 +108,7 @@ export default function SettingsScreen() {
             await handleThemeChange('auto');
             await handleSoundToggle(true);
             await handleVibrationToggle(true);
-            Alert.alert('Succès', 'Les paramètres ont été réinitialisés par défaut');
+            Alert.alert('✅ Succès', 'Les paramètres ont été réinitialisés');
           },
         },
       ]
@@ -111,7 +117,7 @@ export default function SettingsScreen() {
 
   const handleClearAllData = () => {
     Alert.alert(
-      'Effacer toutes les données',
+      '⚠️ Effacer toutes les données',
       'Cela supprimera toutes les tâches, sessions et statistiques. Cette action est irréversible !',
       [
         { text: 'Annuler', style: 'cancel' },
@@ -124,33 +130,10 @@ export default function SettingsScreen() {
                 '@focus_timer_tasks',
                 '@focus_timer_sessions',
               ]);
-              Alert.alert('Succès', 'Toutes les données ont été effacées');
+              await loadStats();
+              Alert.alert('✅ Succès', 'Toutes les données ont été effacées');
             } catch (error) {
-              Alert.alert('Erreur', 'Échec de la suppression des données');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleInitializeFirebase = async () => {
-    Alert.alert(
-      'Initialiser Firebase',
-      'Cela créera toutes les collections nécessaires dans votre base de données Firebase. Continuer ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Initialiser',
-          onPress: async () => {
-            setIsInitializing(true);
-            try {
-              await initializeFirebaseCollections();
-              Alert.alert('Succès', 'Collections Firebase créées avec succès !');
-            } catch (error: any) {
-              Alert.alert('Erreur', error.message || 'Échec de l\'initialisation de Firebase');
-            } finally {
-              setIsInitializing(false);
+              Alert.alert('❌ Erreur', 'Échec de la suppression des données');
             }
           },
         },
@@ -180,100 +163,107 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleExportData = async () => {
-    try {
-      const tasks = await getTasks();
-      const sessions = await getSessions();
-      const exportData = {
-        tasks,
-        sessions,
-        settings,
-        exportDate: new Date().toISOString(),
-      };
-      
-      const jsonData = JSON.stringify(exportData, null, 2);
-      
-      await Share.share({
-        message: jsonData,
-        title: 'Focus Timer Pro Data Export',
-      });
-    } catch (error) {
-      Alert.alert('Erreur', 'Échec de l\'exportation des données');
-    }
-  };
-
   const SettingSection = ({ title, children }: any) => (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
         {title}
       </Text>
-      {children}
+      <View style={[styles.sectionCard, { 
+        backgroundColor: colorScheme === 'dark' ? '#1F1F1F' : '#fff',
+        shadowColor: colorScheme === 'dark' ? '#000' : '#000',
+      }]}>
+        {children}
+      </View>
     </View>
   );
 
-  const SettingRow = ({ label, value, onPress }: any) => (
-    <TouchableOpacity
-      style={[styles.settingRow, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' }]}
-      onPress={onPress}>
-      <Text style={[styles.settingLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
-        {label}
-      </Text>
-      <Text style={[styles.settingValue, { color: Colors[colorScheme ?? 'light'].tint }]}>
-        {value}
-      </Text>
-    </TouchableOpacity>
+  const StatCard = ({ icon, label, value, color }: any) => (
+    <View style={[styles.statCard, { 
+      backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#f8f9fa',
+    }]}>
+      <Text style={styles.statIcon}>{icon}</Text>
+      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={[styles.statLabel, { color: Colors[colorScheme ?? 'light'].text }]}>{label}</Text>
+    </View>
   );
 
-  const SettingToggle = ({ label, value, onValueChange }: any) => (
-    <View style={[styles.settingRow, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' }]}>
-      <Text style={[styles.settingLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
-        {label}
-      </Text>
+  const SettingToggle = ({ label, description, value, onValueChange, icon }: any) => (
+    <View style={styles.settingToggleRow}>
+      <View style={styles.settingToggleInfo}>
+        <View style={styles.settingToggleHeader}>
+          {icon && <Text style={styles.settingIcon}>{icon}</Text>}
+          <Text style={[styles.settingLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
+            {label}
+          </Text>
+        </View>
+        {description && (
+          <Text style={[styles.settingDescription, { color: Colors[colorScheme ?? 'light'].text }]}>
+            {description}
+          </Text>
+        )}
+      </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
         trackColor={{ false: '#767577', true: '#4ECDC4' }}
         thumbColor={value ? '#fff' : '#f4f3f4'}
+        ios_backgroundColor="#767577"
       />
     </View>
   );
 
-  const DurationPicker = ({ label, value, onChange, min = 1, max = 60 }: any) => (
-    <View style={styles.durationPicker}>
-      <Text style={[styles.durationLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
-        {label}
-      </Text>
-      <View style={styles.durationControls}>
-        <TouchableOpacity
-          style={[styles.durationButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-          onPress={() => onChange(Math.max(min, value - 1))}>
-          <Text style={styles.durationButtonText}>−</Text>
-        </TouchableOpacity>
-        <Text style={[styles.durationValue, { color: Colors[colorScheme ?? 'light'].text }]}>
-          {value} min
-        </Text>
-        <TouchableOpacity
-          style={[styles.durationButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-          onPress={() => onChange(Math.min(max, value + 1))}>
-          <Text style={styles.durationButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
   return (
-    <View style={[styles.container, { backgroundColor: colorScheme === 'dark' ? '#0D0D0D' : '#F8F9FA' }]}>
+    <View style={[styles.container, { backgroundColor: colorScheme === 'dark' ? '#0D0D0D' : '#F5F7FA' }]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>
-          Settings
+          ⚙️ Paramètres
         </Text>
         <Text style={[styles.subtitle, { color: colorScheme === 'dark' ? '#B9BCC5' : '#5F6470' }]}>
-          Customize your experience
+          Personnalisez votre expérience
         </Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <SettingSection title="🎨 Appearance">
+        {/* Stats Overview */}
+        <View style={styles.statsContainer}>
+          <StatCard icon="🎯" label="Sessions totales" value={totalSessions} color="#4ECDC4" />
+          <StatCard icon="✅" label="Tâches créées" value={totalTasks} color="#FF6B6B" />
+        </View>
+
+        {/* Account Section */}
+        {userEmail && (
+          <SettingSection title="👤 Compte">
+            <View style={styles.accountInfo}>
+              <View style={styles.accountRow}>
+                <View style={[styles.accountIcon, { backgroundColor: '#4ECDC4' }]}>
+                  <Text style={styles.accountIconText}>
+                    {userEmail.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.accountDetails}>
+                  <Text style={[styles.accountLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
+                    Connecté en tant que
+                  </Text>
+                  <Text style={[styles.accountEmail, { color: Colors[colorScheme ?? 'light'].tint }]}>
+                    {userEmail}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' }]}
+              onPress={handleSignOut}>
+              <Text style={styles.actionButtonIcon}>🚪</Text>
+              <Text style={[styles.actionButtonText, { color: '#FF6B6B' }]}>
+                Se déconnecter
+              </Text>
+            </TouchableOpacity>
+          </SettingSection>
+        )}
+
+        {/* Appearance */}
+        <SettingSection title="🎨 Apparence">
           <View style={styles.themeSelector}>
             {(['auto', 'light', 'dark'] as ThemeMode[]).map((mode) => (
               <TouchableOpacity
@@ -281,140 +271,104 @@ export default function SettingsScreen() {
                 style={[
                   styles.themeButton,
                   { 
-                    backgroundColor: colorScheme === 'dark' ? '#1F1F1F' : '#fff',
-                    borderColor: colorScheme === 'dark' ? '#2A2A2A' : '#E0E0E0',
+                    backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#f8f9fa',
+                    borderColor: themeMode === mode ? '#4ECDC4' : 'transparent',
                   },
-                  themeMode === mode && styles.themeButtonActive,
                 ]}
                 onPress={() => handleThemeChange(mode)}>
+                <Text style={styles.themeButtonIcon}>
+                  {mode === 'auto' ? '🔄' : mode === 'light' ? '☀️' : '🌙'}
+                </Text>
                 <Text
                   style={[
                     styles.themeButtonText,
-                    { color: Colors[colorScheme ?? 'light'].text },
-                    themeMode === mode && styles.themeButtonTextActive,
+                    { 
+                      color: themeMode === mode ? '#4ECDC4' : Colors[colorScheme ?? 'light'].text,
+                    },
                   ]}>
-                  {mode === 'auto' ? '🔄 Auto' : mode === 'light' ? '☀️ Light' : '🌙 Dark'}
+                  {mode === 'auto' ? 'Auto' : mode === 'light' ? 'Clair' : 'Sombre'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         </SettingSection>
 
-        <SettingSection title="⏱️ Timer Durations">
-          <DurationPicker
-            label="Focus Duration"
-            value={settings.focusDuration}
-            onChange={updateFocusDuration}
-            min={5}
-            max={60}
-          />
-          <DurationPicker
-            label="Short Break"
-            value={settings.shortBreakDuration}
-            onChange={updateShortBreak}
-            min={1}
-            max={30}
-          />
-          <DurationPicker
-            label="Long Break"
-            value={settings.longBreakDuration}
-            onChange={updateLongBreak}
-            min={5}
-            max={60}
-          />
-          <View style={styles.durationPicker}>
-            <Text style={[styles.durationLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
-              Sessions before long break
-            </Text>
-            <View style={styles.durationControls}>
-              <TouchableOpacity
-                style={[styles.durationButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-                onPress={() => updateSessionsBeforeLongBreak(Math.max(2, settings.sessionsBeforeLongBreak - 1))}>
-                <Text style={styles.durationButtonText}>−</Text>
-              </TouchableOpacity>
-              <Text style={[styles.durationValue, { color: Colors[colorScheme ?? 'light'].text }]}>
-                {settings.sessionsBeforeLongBreak}
-              </Text>
-              <TouchableOpacity
-                style={[styles.durationButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }]}
-                onPress={() => updateSessionsBeforeLongBreak(Math.min(10, settings.sessionsBeforeLongBreak + 1))}>
-                <Text style={styles.durationButtonText}>+</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </SettingSection>
-
-        <SettingSection title="🔔 Notifications">
+        {/* Notifications */}
+        <SettingSection title="🔔 Notifications & Alertes">
           <SettingToggle
-            label="Sound Alerts"
+            icon="🔊"
+            label="Sons d'alerte"
+            description="Jouer un son lorsqu'un timer se termine"
             value={soundEnabled}
             onValueChange={handleSoundToggle}
           />
+          <View style={styles.divider} />
           <SettingToggle
-            label="Vibration"
+            icon="📳"
+            label="Vibrations"
+            description="Vibrer à la fin de chaque session"
             value={vibrationEnabled}
             onValueChange={handleVibrationToggle}
           />
         </SettingSection>
-        <SettingSection title="🔥 Firebase & Account">
-          {userEmail && (
-            <View style={[styles.accountInfo, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' }]}>
-              <Text style={[styles.accountLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
-                Signed in as:
-              </Text>
-              <Text style={[styles.accountEmail, { color: Colors[colorScheme ?? 'light'].tint }]}>
-                {userEmail}
-              </Text>
-            </View>
-          )}
+
+        {/* Data & Privacy */}
+        <SettingSection title="💾 Données & Confidentialité">
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#4ECDC4' }]}
-            onPress={handleInitializeFirebase}
-            disabled={isInitializing}>
-            <Text style={[styles.actionButtonText, { color: '#fff' }]}>
-              {isInitializing ? '⌛ Initializing...' : '🚀 Initialize Firebase Collections'}
+            style={[styles.actionButton, { 
+              backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff',
+              borderWidth: 1,
+              borderColor: colorScheme === 'dark' ? '#3a3a3a' : '#e0e0e0',
+            }]}
+            onPress={handleResetSettings}>
+            <Text style={styles.actionButtonIcon}>🔄</Text>
+            <Text style={[styles.actionButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+              Réinitialiser les paramètres
             </Text>
           </TouchableOpacity>
-          {userEmail && (
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' }]}
-              onPress={handleSignOut}>
-              <Text style={[styles.actionButtonText, { color: '#FF6B6B' }]}>
-                Sign Out
-              </Text>
-            </TouchableOpacity>
-          )}
-        </SettingSection>
-        <SettingSection title="⚙️ Advanced">
+          
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' }]}            onPress={handleExportData}>
-            <Text style={[styles.actionButtonText, { color: Colors[colorScheme ?? 'light'].tint }]}>
-              📥 Export Data
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff' }]}            onPress={handleResetSettings}>
-            <Text style={[styles.actionButtonText, { color: Colors[colorScheme ?? 'light'].tint }]}>
-              Reset Settings
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.dangerButton]}
+            style={[styles.actionButton, { 
+              backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#fff',
+              borderWidth: 2,
+              borderColor: '#FF6B6B',
+            }]}
             onPress={handleClearAllData}>
-            <Text style={[styles.actionButtonText, { color: '#FF6B6B' }]}>
-              Clear All Data
+            <Text style={styles.actionButtonIcon}>🗑️</Text>
+            <Text style={[styles.actionButtonText, { color: '#FF6B6B', fontWeight: '700' }]}>
+              Effacer toutes les données
             </Text>
           </TouchableOpacity>
         </SettingSection>
 
-        <View style={styles.appInfo}>
-          <Text style={[styles.appInfoText, { color: Colors[colorScheme ?? 'light'].text }]}>
-            Focus Timer Pro v1.0.0
-          </Text>
-          <Text style={[styles.appInfoText, { color: Colors[colorScheme ?? 'light'].text }]}>
-            Made with ❤️ for productivity
-          </Text>
-        </View>
+        {/* About */}
+        <SettingSection title="ℹ️ À propos">
+          <View style={styles.aboutContent}>
+            <Text style={[styles.appVersion, { color: Colors[colorScheme ?? 'light'].text }]}>
+              Focus Timer Pro
+            </Text>
+            <Text style={[styles.appVersionNumber, { color: Colors[colorScheme ?? 'light'].tint }]}>
+              Version 1.0.0
+            </Text>
+            
+            <View style={styles.aboutLinks}>
+              <TouchableOpacity 
+                style={styles.aboutLink}
+                onPress={() => Linking.openURL('mailto:support@focustimer.com')}>
+                <Text style={styles.aboutLinkIcon}>📧</Text>
+                <Text style={[styles.aboutLinkText, { color: Colors[colorScheme ?? 'light'].tint }]}>
+                  Support
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={[styles.madeWith, { color: Colors[colorScheme ?? 'light'].text }]}>
+              Fait avec ❤️ pour la productivité
+            </Text>
+          </View>
+        </SettingSection>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -426,150 +380,210 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   header: {
-    padding: 20,
-    paddingBottom: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 5,
+    fontSize: 34,
+    fontWeight: '800',
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     opacity: 0.7,
   },
   content: {
     flex: 1,
     paddingHorizontal: 20,
   },
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  statIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    opacity: 0.7,
+    textAlign: 'center',
+  },
   section: {
-    marginBottom: 30,
+    marginBottom: 28,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  sectionCard: {
+    borderRadius: 16,
+    padding: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  accountInfo: {
+    padding: 16,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  accountIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  accountIconText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  accountDetails: {
+    flex: 1,
+  },
+  accountLabel: {
+    fontSize: 12,
+    opacity: 0.6,
+    marginBottom: 4,
+  },
+  accountEmail: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   themeSelector: {
     flexDirection: 'row',
+    padding: 12,
     gap: 10,
   },
   themeButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'transparent',
+    gap: 6,
   },
-  themeButtonActive: {
-    borderColor: '#4ECDC4',
+  themeButtonIcon: {
+    fontSize: 24,
   },
   themeButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
-  themeButtonTextActive: {
-    color: '#4ECDC4',
-  },
-  settingRow: {
+  settingToggleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    gap: 12,
+  },
+  settingToggleInfo: {
+    flex: 1,
+  },
+  settingToggleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  settingIcon: {
+    fontSize: 18,
   },
   settingLabel: {
     fontSize: 16,
-  },
-  settingValue: {
-    fontSize: 16,
     fontWeight: '600',
   },
-  durationPicker: {
-    padding: 16,
-    marginBottom: 10,
+  settingDescription: {
+    fontSize: 13,
+    opacity: 0.6,
+    marginTop: 2,
   },
-  durationLabel: {
-    fontSize: 16,
-    marginBottom: 12,
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(128, 128, 128, 0.2)',
+    marginHorizontal: 16,
   },
-  durationControls: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 15,
-  },
-  durationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  durationButtonText: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  durationValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    minWidth: 80,
-    textAlign: 'center',
-  },
-  actionButton: {
     padding: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    margin: 12,
+    borderRadius: 12,
+    gap: 10,
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 4,
     elevation: 2,
   },
-  dangerButton: {
-    borderWidth: 1,
-    borderColor: '#FF6B6B',
+  actionButtonIcon: {
+    fontSize: 20,
   },
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
-  appInfo: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    marginBottom: 20,
-  },
-  appInfoText: {
-    fontSize: 12,
+  helperText: {
+    fontSize: 13,
     opacity: 0.6,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  aboutContent: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  appVersion: {
+    fontSize: 18,
+    fontWeight: '700',
     marginBottom: 4,
   },
-  accountInfo: {
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  accountLabel: {
-    fontSize: 12,
-    opacity: 0.7,
-    marginBottom: 5,
-  },
-  accountEmail: {
-    fontSize: 16,
+  appVersionNumber: {
+    fontSize: 14,
     fontWeight: '600',
+    marginBottom: 20,
+  },
+  aboutLinks: {
+    flexDirection: 'row',
+    gap: 20,
+    marginBottom: 20,
+  },
+  aboutLink: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  aboutLinkIcon: {
+    fontSize: 24,
+  },
+  aboutLinkText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  madeWith: {
+    fontSize: 13,
+    opacity: 0.6,
   },
 });

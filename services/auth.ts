@@ -8,9 +8,6 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 
-// Exporter auth pour l'utiliser ailleurs
-export { auth };
-
 export interface UserProfile {
   uid: string;
   email: string;
