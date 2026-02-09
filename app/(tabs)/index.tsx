@@ -8,8 +8,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Dimensions, Linking, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
+import MusicControl from 'react-native-music-control';
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
+
+interface NowPlayingInfo {
+  title: string;
+  artist: string;
+  album?: string;
+}
 
 export default function TimerScreen() {
   const colorScheme = useColorScheme();
@@ -28,6 +35,7 @@ export default function TimerScreen() {
   const [focusModeActive, setFocusModeActive] = useState(false);
   const [timeManuallyAdjusted, setTimeManuallyAdjusted] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [nowPlaying, setNowPlaying] = useState<NowPlayingInfo | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const completeButtonAnim = useRef(new Animated.Value(0)).current;
@@ -144,6 +152,28 @@ export default function TimerScreen() {
       pulseAnim.setValue(1);
     }
   }, [isRunning]);
+
+  // Écouter les changements de musique
+  useEffect(() => {
+    MusicControl.enableControl('play', false);
+    MusicControl.enableControl('pause', false);
+    
+    const updateListener = MusicControl.on('nowPlaying', (info: any) => {
+      if (info && info.title) {
+        setNowPlaying({
+          title: info.title,
+          artist: info.artist || 'Artiste inconnu',
+          album: info.album,
+        });
+      }
+    });
+
+    return () => {
+      if (updateListener) {
+        updateListener.remove();
+      }
+    };
+  }, []);
 
   const loadSettings = async () => {
     const loadedSettings = await getSettings();
@@ -379,6 +409,17 @@ export default function TimerScreen() {
     return `${hours}:${minutes}`;
   };
 
+  const getCurrentDate = () => {
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    };
+    return now.toLocaleDateString('fr-FR', options);
+  };
+
   const getProgress = () => {
     if (!settings) return 0;
     const totalDuration = (mode === 'focus' ? settings.focusDuration :
@@ -396,10 +437,12 @@ export default function TimerScreen() {
   };
 
   const [currentTime, setCurrentTime] = useState(getCurrentTime());
+  const [currentDate, setCurrentDate] = useState(getCurrentDate());
 
   useEffect(() => {
     const timeInterval = setInterval(() => {
       setCurrentTime(getCurrentTime());
+      setCurrentDate(getCurrentDate());
     }, 1000);
 
     return () => clearInterval(timeInterval);
@@ -438,6 +481,9 @@ export default function TimerScreen() {
       {isRunning ? (
         <View style={[styles.immersiveContainer, { backgroundColor: 'rgba(0, 0, 0, 0.95)' }]}>
           <View style={styles.immersiveTimerWrapper}>
+            <Text style={[styles.immersiveDate, { color: '#fff' }]}>
+              {currentDate}
+            </Text>
             <View style={styles.immersiveTimeDisplay}>
               <View style={styles.immersiveTimeBox}>
                 <Text style={[styles.immersiveCurrentTime, { color: '#fff' }]}>
@@ -464,6 +510,19 @@ export default function TimerScreen() {
                 </Text>
               </View>
             </View>
+            {nowPlaying && (
+              <View style={styles.nowPlayingContainer}>
+                <Text style={styles.nowPlayingIcon}>🎵</Text>
+                <View style={styles.nowPlayingInfo}>
+                  <Text style={styles.nowPlayingTitle} numberOfLines={1}>
+                    {nowPlaying.title}
+                  </Text>
+                  <Text style={styles.nowPlayingArtist} numberOfLines={1}>
+                    {nowPlaying.artist}
+                  </Text>
+                </View>
+              </View>
+            )}
             <TouchableOpacity
               style={styles.immersivePauseButton}
               onPress={toggleTimer}
@@ -881,11 +940,6 @@ export default function TimerScreen() {
               </TouchableOpacity>
             )}
           </View>
-          
-          {/* Statistiques session */}
-          <Text style={[styles.sessionsStat, { color: Colors[colorScheme ?? 'light'].text }]}>
-            {sessionsCompleted} session{sessionsCompleted > 1 ? 's' : ''} aujourd'hui
-          </Text>
         </View>
 
         {/* Boutons de mode simplifiés */}
@@ -1470,6 +1524,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
+  immersiveDate: {
+    fontSize: 16,
+    fontWeight: '400',
+    letterSpacing: 1,
+    opacity: 0.7,
+    marginBottom: 24,
+    textTransform: 'capitalize',
+  },
   immersiveTimeDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1524,6 +1586,34 @@ const styles = StyleSheet.create({
     fontWeight: '200',
     letterSpacing: 2,
     fontVariant: ['tabular-nums'],
+  },
+  nowPlayingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 40,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    maxWidth: '90%',
+  },
+  nowPlayingIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  nowPlayingInfo: {
+    flex: 1,
+  },
+  nowPlayingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  nowPlayingArtist: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.7,
   },
   immersivePauseButton: {
     marginTop: 60,

@@ -7,7 +7,7 @@ import { getAppSettings, saveSoundEnabled, saveTheme, saveVibrationEnabled, Them
 import { DEFAULT_SETTINGS, getSessions, getSettings, getTasks, saveSettings } from '@/utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
-import { Alert, Appearance, Linking, ScrollView, Share, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Appearance, Linking, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();

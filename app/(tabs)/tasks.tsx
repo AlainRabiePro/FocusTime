@@ -30,6 +30,26 @@ export default function TasksScreen() {
 
   const handleAddTask = async () => {
     if (newTaskTitle.trim()) {
+      // Valider que les dates sont obligatoires
+      if (!newTaskStartDate) {
+        alert('La date de début est obligatoire');
+        return;
+      }
+      if (!newTaskEndDate) {
+        alert('La date de fin est obligatoire');
+        return;
+      }
+      
+      // Valider que les dates sont valides
+      if (!isValidDate(newTaskStartDate)) {
+        alert('La date de début n\'est pas valide');
+        return;
+      }
+      if (!isValidDate(newTaskEndDate)) {
+        alert('La date de fin n\'est pas valide');
+        return;
+      }
+
       const taskData: Partial<Task> = {
         title: newTaskTitle.trim(),
         description: newTaskDescription.trim() || undefined,
@@ -69,6 +89,41 @@ export default function TasksScreen() {
     setNewTaskDuration('');
   };
 
+  const formatDateInput = (text: string) => {
+    // Enlever tous les caractères non numériques
+    const numbers = text.replace(/\D/g, '');
+    
+    // Limiter à 8 chiffres (JJMMAAAA)
+    const limited = numbers.slice(0, 8);
+    
+    // Ajouter les slashes automatiquement
+    if (limited.length <= 2) {
+      return limited;
+    } else if (limited.length <= 4) {
+      return `${limited.slice(0, 2)}/${limited.slice(2)}`;
+    } else {
+      return `${limited.slice(0, 2)}/${limited.slice(2, 4)}/${limited.slice(4)}`;
+    }
+  };
+
+  const isValidDate = (dateStr: string) => {
+    if (!dateStr || dateStr.length !== 10) return false;
+    
+    const [day, month, year] = dateStr.split('/').map(Number);
+    if (!day || !month || !year) return false;
+    
+    // Vérifier les limites basiques
+    if (month < 1 || month > 12) return false;
+    if (day < 1 || day > 31) return false;
+    if (year < 1900 || year > 2100) return false;
+    
+    // Vérifier si la date est valide
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && 
+           date.getMonth() === month - 1 && 
+           date.getDate() === day;
+  };
+
   const getPriorityColor = (priority: Priority) => {
     switch (priority) {
       case 'high': return '#FF6B6B';
@@ -84,6 +139,7 @@ export default function TasksScreen() {
       case 'low': return '🟢 Basse';
     }
   };
+  // différents moyen de sauvegarde de tâches : AsyncStorage, SQLite, Realm, WatermelonDB, Firebase, etc.
 
   const handleToggleTask = async (task: Task) => {
     await updateTask(task.id, { completed: !task.completed });
@@ -208,7 +264,7 @@ export default function TasksScreen() {
 
               <View style={styles.formRow}>
                 <View style={[styles.formGroup, { flex: 1 }]}>
-                  <Text style={[styles.label, { color: Colors[colorScheme ?? 'light'].text }]}>Date début</Text>
+                  <Text style={[styles.label, { color: Colors[colorScheme ?? 'light'].text }]}>Date début *</Text>
                   <TextInput
                     style={[styles.textInput, { 
                       backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#f5f5f5',
@@ -217,12 +273,13 @@ export default function TasksScreen() {
                     placeholder="JJ/MM/AAAA"
                     placeholderTextColor="#999"
                     value={newTaskStartDate}
-                    onChangeText={setNewTaskStartDate}
-                    keyboardType="numbers-and-punctuation"
+                    onChangeText={(text) => setNewTaskStartDate(formatDateInput(text))}
+                    keyboardType="numeric"
+                    maxLength={10}
                   />
                 </View>
                 <View style={[styles.formGroup, { flex: 1 }]}>
-                  <Text style={[styles.label, { color: Colors[colorScheme ?? 'light'].text }]}>Date fin</Text>
+                  <Text style={[styles.label, { color: Colors[colorScheme ?? 'light'].text }]}>Date fin *</Text>
                   <TextInput
                     style={[styles.textInput, { 
                       backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#f5f5f5',
@@ -231,8 +288,9 @@ export default function TasksScreen() {
                     placeholder="JJ/MM/AAAA"
                     placeholderTextColor="#999"
                     value={newTaskEndDate}
-                    onChangeText={setNewTaskEndDate}
-                    keyboardType="numbers-and-punctuation"
+                    onChangeText={(text) => setNewTaskEndDate(formatDateInput(text))}
+                    keyboardType="numeric"
+                    maxLength={10}
                   />
                 </View>
               </View>
@@ -260,9 +318,9 @@ export default function TasksScreen() {
                 <Text style={styles.cancelButtonText}>Annuler</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.createButton, !newTaskTitle.trim() && styles.createButtonDisabled]}
+                style={[styles.modalButton, styles.createButton, (!newTaskTitle.trim() || !newTaskStartDate || !newTaskEndDate) && styles.createButtonDisabled]}
                 onPress={handleAddTask}
-                disabled={!newTaskTitle.trim()}>
+                disabled={!newTaskTitle.trim() || !newTaskStartDate || !newTaskEndDate}>
                 <Text style={styles.createButtonText}>Créer</Text>
               </TouchableOpacity>
             </View>
