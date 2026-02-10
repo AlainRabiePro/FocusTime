@@ -11,7 +11,10 @@
     "description": "Boost your productivity with Focus Timer Pro - A powerful Pomodoro timer with task management and statistics",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.focustimer.pro"
+      "bundleIdentifier": "com.focustimer.pro",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +26,10 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.focustimer.pro",
-      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"]
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "output": "static",
@@ -47,6 +53,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bed51ca0-405a-47f0-8107-be54b5b2c568"
+      }
     }
   }
 }

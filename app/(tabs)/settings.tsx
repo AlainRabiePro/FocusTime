@@ -182,7 +182,7 @@ export default function SettingsScreen() {
       backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#f8f9fa',
     }]}>
       <Text style={styles.statIcon}>{icon}</Text>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={[styles.statValue, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>{value}</Text>
       <Text style={[styles.statLabel, { color: Colors[colorScheme ?? 'light'].text }]}>{label}</Text>
     </View>
   );

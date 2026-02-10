@@ -7,8 +7,17 @@ import { getSettings, saveSession } from '@/utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Dimensions, Linking, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
-import MusicControl from 'react-native-music-control';
+import { Alert, Animated, Dimensions, Linking, PanResponder, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
+
+// Conditionally import MusicControl (may not work in Expo)
+let MusicControl: any = null;
+try {
+  if (Platform.OS !== 'web') {
+    MusicControl = require('react-native-music-control').default;
+  }
+} catch (error) {
+  console.log('MusicControl not available:', error);
+}
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
 
@@ -33,6 +42,9 @@ export default function TimerScreen() {
   const [focusModeEnabled, setFocusModeEnabled] = useState(false);
   const [autoActivateFocus, setAutoActivateFocus] = useState(true);
   const [focusModeActive, setFocusModeActive] = useState(false);
+  const [blockNotifications, setBlockNotifications] = useState(true);
+  const [blockCalls, setBlockCalls] = useState(false);
+  const [allowAlarms, setAllowAlarms] = useState(true);
   const [timeManuallyAdjusted, setTimeManuallyAdjusted] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [nowPlaying, setNowPlaying] = useState<NowPlayingInfo | null>(null);
@@ -155,24 +167,32 @@ export default function TimerScreen() {
 
   // Écouter les changements de musique
   useEffect(() => {
-    MusicControl.enableControl('play', false);
-    MusicControl.enableControl('pause', false);
-    
-    const updateListener = MusicControl.on('nowPlaying', (info: any) => {
-      if (info && info.title) {
-        setNowPlaying({
-          title: info.title,
-          artist: info.artist || 'Artiste inconnu',
-          album: info.album,
-        });
-      }
-    });
+    if (!MusicControl) {
+      return; // Skip if MusicControl is not available
+    }
 
-    return () => {
-      if (updateListener) {
-        updateListener.remove();
-      }
-    };
+    try {
+      MusicControl.enableControl('play', false);
+      MusicControl.enableControl('pause', false);
+      
+      const updateListener = MusicControl.on('nowPlaying', (info: any) => {
+        if (info && info.title) {
+          setNowPlaying({
+            title: info.title,
+            artist: info.artist || 'Artiste inconnu',
+            album: info.album,
+          });
+        }
+      });
+
+      return () => {
+        if (updateListener) {
+          updateListener.remove();
+        }
+      };
+    } catch (error) {
+      console.log('Error setting up MusicControl:', error);
+    }
   }, []);
 
   const loadSettings = async () => {
@@ -186,9 +206,15 @@ export default function TimerScreen() {
       const focusSettings = await AsyncStorage.multiGet([
         '@focus_mode_enabled',
         '@focus_auto_activate',
+        '@focus_block_notifications',
+        '@focus_block_calls',
+        '@focus_allow_alarms',
       ]);
       setFocusModeEnabled(focusSettings[0][1] === 'true');
       setAutoActivateFocus(focusSettings[1][1] !== 'false');
+      setBlockNotifications(focusSettings[2][1] !== 'false');
+      setBlockCalls(focusSettings[3][1] === 'true');
+      setAllowAlarms(focusSettings[4][1] !== 'false');
     } catch (error) {
       console.error('Error loading focus settings:', error);
     }
@@ -327,6 +353,15 @@ export default function TimerScreen() {
       if (newRunningState) {
         if (vibrationEnabled) {
           Vibration.vibrate(100);
+        }
+        // Afficher un message indiquant que le mode Focus est actif
+        const features = [];
+        if (blockNotifications) features.push('notifications bloquées');
+        if (blockCalls) features.push('appels rejetés');
+        if (allowAlarms) features.push('alarmes autorisées');
+        
+        if (features.length > 0) {
+          console.log(`🎯 Mode Focus activé: ${features.join(', ')}`);
         }
       }
     }
@@ -542,7 +577,9 @@ export default function TimerScreen() {
             <Text style={styles.focusBannerIcon}>🎯</Text>
             <View style={styles.focusBannerContent}>
               <Text style={styles.focusBannerTitle}>Mode Concentration Actif</Text>
-              <Text style={styles.focusBannerSubtitle}>Se désactive automatiquement à la fin</Text>
+              <Text style={styles.focusBannerSubtitle}>
+                {blockNotifications && '🔕 Notifications '}{blockCalls && '📵 Appels '}{allowAlarms && '⏰ Alarmes OK'}
+              </Text>
             </View>
           </View>
         )}

@@ -1,9 +1,11 @@
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { getSessions } from '@/utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Contacts from 'expo-contacts';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Contact {
@@ -33,11 +35,21 @@ export default function FocusScreen() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasPermission, setHasPermission] = useState(false);
+  const [focusSessionsCount, setFocusSessionsCount] = useState(0);
+  const [notificationsBlocked, setNotificationsBlocked] = useState(0);
 
   useEffect(() => {
     loadFocusSettings();
+    loadFocusStats();
     requestContactsPermission();
   }, []);
+
+  // Rafraîchir les stats quand l'écran devient actif
+  useFocusEffect(
+    useCallback(() => {
+      loadFocusStats();
+    }, [])
+  );
 
   const requestContactsPermission = async () => {
     try {
@@ -116,6 +128,20 @@ export default function FocusScreen() {
       }
     } catch (error) {
       console.error('Error loading focus settings:', error);
+    }
+  };
+
+  const loadFocusStats = async () => {
+    try {
+      const sessions = await getSessions();
+      const focusSessions = sessions.filter(s => s.type === 'focus');
+      setFocusSessionsCount(focusSessions.length);
+      
+      // Estimer les notifications bloquées (environ 6-7 par session de 25min)
+      const estimatedNotifications = focusSessions.length * 6;
+      setNotificationsBlocked(estimatedNotifications);
+    } catch (error) {
+      console.error('Error loading focus stats:', error);
     }
   };
 
@@ -271,16 +297,20 @@ export default function FocusScreen() {
         {focusModeEnabled && (
           <View style={[styles.statsCard, { backgroundColor: colorScheme === 'dark' ? '#1F1F1F' : '#fff' }]}>
             <View style={styles.statRow}>
-              <View style={styles.statItem}>
+              <View style={[styles.statItem, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#F8F9FA' }]}>
                 <Text style={styles.statIcon}>📊</Text>
-                <Text style={[styles.statValue, { color: Colors[colorScheme ?? 'light'].text }]}>24</Text>
+                <Text style={[styles.statValue, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>
+                  {focusSessionsCount}
+                </Text>
                 <Text style={[styles.statLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
                   Sessions concentrées
                 </Text>
               </View>
-              <View style={styles.statItem}>
+              <View style={[styles.statItem, { backgroundColor: colorScheme === 'dark' ? '#2a2a2a' : '#F8F9FA' }]}>
                 <Text style={styles.statIcon}>🔕</Text>
-                <Text style={[styles.statValue, { color: Colors[colorScheme ?? 'light'].text }]}>156</Text>
+                <Text style={[styles.statValue, { color: colorScheme === 'dark' ? '#FFFFFF' : '#000000' }]}>
+                  {notificationsBlocked}
+                </Text>
                 <Text style={[styles.statLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
                   Notifications bloquées
                 </Text>
@@ -630,7 +660,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     padding: 15,
-    backgroundColor: '#F8F9FA',
     borderRadius: 15,
   },
   statIcon: {
