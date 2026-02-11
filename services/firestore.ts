@@ -12,10 +12,11 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { Session, Settings, Task } from '../types/storage';
+import { getErrorMessage } from '../utils/error-handler';
 
 const getCurrentUserId = () => {
   const user = auth.currentUser;
-  if (!user) throw new Error('User not authenticated');
+  if (!user) throw new Error('Vous devez être connecté pour effectuer cette action.');
   return user.uid;
 };
 
@@ -36,16 +37,16 @@ export const initializeFirebaseCollections = async (): Promise<void> => {
 
     // Créer un document d'exemple pour les tasks (sera supprimé par l'utilisateur)
     await addDoc(collection(db, 'users', userId, 'tasks'), {
-      title: 'Welcome to Focus Timer Pro!',
+      title: 'Bienvenue dans Focus Timer Pro !',
       completed: false,
       pomodorosCompleted: 0,
       createdAt: Date.now(),
     });
 
-    console.log('Firebase collections initialized successfully');
+    console.log('Collections Firebase initialisées avec succès');
   } catch (error) {
-    console.error('Error initializing Firebase collections:', error);
-    throw error;
+    console.error('Erreur lors de l\'initialisation des collections:', error);
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -62,7 +63,7 @@ export const getFirebaseTasks = async (): Promise<Task[]> => {
       ...doc.data(),
     } as Task));
   } catch (error) {
-    console.error('Error getting tasks:', error);
+    console.error('Erreur lors de la récupération des tâches:', error);
     return [];
   }
 };
@@ -88,8 +89,8 @@ export const addFirebaseTask = async (title: string, priority: 'low' | 'medium' 
       ...newTask,
     } as Task;
   } catch (error) {
-    console.error('Error adding task:', error);
-    throw error;
+    console.error('Erreur lors de l\'ajout d\'une tâche:', error);
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -99,8 +100,8 @@ export const updateFirebaseTask = async (id: string, updates: Partial<Task>): Pr
     const taskRef = doc(db, 'users', userId, 'tasks', id);
     await updateDoc(taskRef, updates);
   } catch (error) {
-    console.error('Error updating task:', error);
-    throw error;
+    console.error('Erreur lors de la mise à jour d\'une tâche:', error);
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -110,8 +111,8 @@ export const deleteFirebaseTask = async (id: string): Promise<void> => {
     const taskRef = doc(db, 'users', userId, 'tasks', id);
     await deleteDoc(taskRef);
   } catch (error) {
-    console.error('Error deleting task:', error);
-    throw error;
+    console.error('Erreur lors de la suppression d\'une tâche:', error);
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -128,7 +129,7 @@ export const getFirebaseSessions = async (): Promise<Session[]> => {
       ...doc.data(),
     } as Session));
   } catch (error) {
-    console.error('Error getting sessions:', error);
+    console.error('Erreur lors de la récupération des sessions:', error);
     return [];
   }
 };
@@ -139,8 +140,8 @@ export const saveFirebaseSession = async (session: Omit<Session, 'id'>): Promise
     const sessionsRef = collection(db, 'users', userId, 'sessions');
     await addDoc(sessionsRef, session);
   } catch (error) {
-    console.error('Error saving session:', error);
-    throw error;
+    console.error('Erreur lors de la sauvegarde de la session:', error);
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -166,7 +167,7 @@ export const getFirebaseSettings = async (): Promise<Settings> => {
     
     return defaultSettings;
   } catch (error) {
-    console.error('Error getting settings:', error);
+    console.error('Erreur lors de la récupération des paramètres:', error);
     return {
       focusDuration: 25,
       shortBreakDuration: 5,
@@ -182,7 +183,7 @@ export const saveFirebaseSettings = async (settings: Settings): Promise<void> =>
     const settingsRef = doc(db, 'users', userId, 'config', 'settings');
     await setDoc(settingsRef, settings, { merge: true });
   } catch (error) {
-    console.error('Error saving settings:', error);
-    throw error;
+    console.error('Erreur lors de la sauvegarde des paramètres:', error);
+    throw new Error(getErrorMessage(error));
   }
 };

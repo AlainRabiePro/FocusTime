@@ -70,7 +70,7 @@ export default function FocusScreen() {
         );
       }
     } catch (error) {
-      console.error('Error requesting contacts permission:', error);
+      console.error('Erreur lors de la demande de permission des contacts:', error);
       setLoading(false);
     }
   };
@@ -98,8 +98,8 @@ export default function FocusScreen() {
 
       setContacts(formattedContacts);
     } catch (error) {
-      console.error('Error loading contacts:', error);
-      Alert.alert('Erreur', 'Impossible de charger les contacts.');
+      console.error('Erreur lors du chargement des contacts:', error);
+      Alert.alert('⚠️ Erreur', 'Impossible de charger les contacts.');
     } finally {
       setLoading(false);
     }
@@ -127,7 +127,7 @@ export default function FocusScreen() {
         setAllowedContacts(JSON.parse(savedContacts));
       }
     } catch (error) {
-      console.error('Error loading focus settings:', error);
+      console.error('Erreur lors du chargement des paramètres de focus:', error);
     }
   };
 
@@ -141,7 +141,7 @@ export default function FocusScreen() {
       const estimatedNotifications = focusSessions.length * 6;
       setNotificationsBlocked(estimatedNotifications);
     } catch (error) {
-      console.error('Error loading focus stats:', error);
+      console.error('Erreur lors du chargement des statistiques de focus:', error);
     }
   };
 
@@ -149,7 +149,7 @@ export default function FocusScreen() {
     try {
       await AsyncStorage.setItem(key, value.toString());
     } catch (error) {
-      console.error('Error saving focus setting:', error);
+      console.error('Erreur lors de la sauvegarde du paramètre de focus:', error);
     }
   };
 

@@ -7,6 +7,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import { getErrorMessage } from '../utils/error-handler';
 
 export interface UserProfile {
   uid: string;
@@ -43,7 +44,7 @@ export const signUp = async (email: string, password: string, displayName?: stri
     await setDoc(doc(db, 'users', user.uid), userProfile);
     return user;
   } catch (error: any) {
-    throw new Error(error.message);
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -52,7 +53,7 @@ export const signIn = async (email: string, password: string): Promise<User> => 
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   } catch (error: any) {
-    throw new Error(error.message);
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -60,7 +61,7 @@ export const signOut = async (): Promise<void> => {
   try {
     await firebaseSignOut(auth);
   } catch (error: any) {
-    throw new Error(error.message);
+    throw new Error(getErrorMessage(error));
   }
 };
 
@@ -74,7 +75,7 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
     }
     return null;
   } catch (error: any) {
-    throw new Error(error.message);
+    throw new Error(getErrorMessage(error));
   }
 };
 

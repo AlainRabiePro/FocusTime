@@ -4,6 +4,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { signOut } from '@/services/auth';
 import { Settings } from '@/types/storage';
 import { getAppSettings, saveSoundEnabled, saveTheme, saveVibrationEnabled, ThemeMode } from '@/utils/app-settings';
+import { getErrorMessage } from '@/utils/error-handler';
 import { DEFAULT_SETTINGS, getSessions, getSettings, getTasks, saveSettings } from '@/utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
@@ -153,9 +154,9 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               await signOut();
-              Alert.alert('Succès', 'Déconnexion réussie');
+              Alert.alert('✅ Succès', 'Déconnexion réussie');
             } catch (error: any) {
-              Alert.alert('Erreur', error.message);
+              Alert.alert('⚠️ Erreur', getErrorMessage(error));
             }
           },
         },

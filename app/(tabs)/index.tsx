@@ -113,7 +113,7 @@ export default function TimerScreen() {
         if (sessionsSaved) setSessionsCompleted(parseInt(sessionsSaved));
       }
     } catch (error) {
-      console.error('Error loading timer state:', error);
+      console.error('Erreur lors du chargement de l\'état du timer:', error);
     }
   };
 
@@ -134,7 +134,7 @@ export default function TimerScreen() {
       
       await AsyncStorage.multiSet(stateToSave);
     } catch (error) {
-      console.error('Error saving timer state:', error);
+      console.error('Erreur lors de la sauvegarde de l\'état du timer:', error);
     }
   };
 
@@ -216,7 +216,7 @@ export default function TimerScreen() {
       setBlockCalls(focusSettings[3][1] === 'true');
       setAllowAlarms(focusSettings[4][1] !== 'false');
     } catch (error) {
-      console.error('Error loading focus settings:', error);
+      console.error('Erreur lors du chargement des paramètres de focus:', error);
     }
   };
 

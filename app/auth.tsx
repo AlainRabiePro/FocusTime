@@ -1,6 +1,7 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { signIn, signUp } from '@/services/auth';
+import { getErrorMessage } from '@/utils/error-handler';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -92,10 +93,10 @@ export default function AuthScreen() {
         await signIn(email, password);
       } else {
         await signUp(email, password, displayName);
-        Alert.alert('Succès', 'Compte créé avec succès ! Bienvenue 🎉');
+        Alert.alert('✅ Succès', 'Compte créé avec succès ! Bienvenue 🎉');
       }
     } catch (error: any) {
-      Alert.alert('Erreur', error.message);
+      Alert.alert('⚠️ Erreur', getErrorMessage(error));
     } finally {
       setLoading(false);
     }
